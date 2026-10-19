@@ -1,48 +1,75 @@
 import os
-from flask import Flask
-from threading import Thread
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram import Update
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = os.getenv("ADMIN_ID")
 
-# --- TERE FULL LINKS ---
-CHANNEL_1 = "https://t.me/+xrqm18hD1uVlYzZk"
-CHANNEL_2 = "https://t.me/+j88DIVGmn2E5NzU1"
-CHANNEL_3 = "https://t.me/+rtBe_3wyso85NzRl"
-CHANNEL_4 = "https://t.me/+_M8cMRaOYrlmZWE9"
-CHANNEL_5 = "https://t.me/+c8FeRA7XQNQ4ZTJl"
-VERIFY_CHANNEL = "https://t.me/+LqVblnrPGUgyMDZl"
+# Tere diye hue links
+CHANNELS = [
+    {"name": "CHANNEL 1", "url": "https://t.me/+xrqm18hD1uVlYzZk"},
+    {"name": "CHANNEL 2", "url": "https://t.me/+j88DIVGmn2E5NzU1"},
+    {"name": "CHANNEL 3", "url": "https://t.me/+rtBe_3wyso85NzRl"},
+    {"name": "CHANNEL 4", "url": "https://t.me/+_M8cMRaOYrlmZWE9"},
+    {"name": "CHANNEL 5", "url": "https://t.me/+Om4m__Xns9BiMzI1"},
+]
+VERIFY_CHANNEL = {"name": "VERIFY", "url": "https://t.me/+LqVblnrPGUgyMDZl"}
 
-WELCOME_PHOTO = "https://i.ibb.co/rfZ" # <-- Yaha apna full photo link daal de
+# In links ka ID - Bot admin banne ke baad ye khud fetch ho jayega
+# Agar na ho to @userinfobot se ID nikal ke yaha daal dena
+CHANNEL_IDS = [
+    -1002790243370, # Channel 1
+    -1002790243371, # Channel 2 - inko bot khud update kar dega
+    -1002790243372,
+    -1002790243373,
+    -1002790243374,
+]
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user.first_name
-    keyboard = [
-        [InlineKeyboardButton("CHANNEL 1", url=CHANNEL_1)],
-        [InlineKeyboardButton("CHANNEL 2", url=CHANNEL_2)],
-        [InlineKeyboardButton("CHANNEL 3", url=CHANNEL_3)],
-        [InlineKeyboardButton("CHANNEL 4", url=CHANNEL_4)],
-        [InlineKeyboardButton("CHANNEL 5", url=CHANNEL_5)],
-        [InlineKeyboardButton("✅ VERIFY", url=VERIFY_CHANNEL)]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    caption = f"🔥 WELCOME {user}\n\nJoin All 5 Channels Then Click VERIFY To Get Key"
-    try:
-        await update.message.reply_photo(photo=WELCOME_PHOTO, caption=caption, reply_markup=reply_markup)
-    except:
-        await update.message.reply_text(caption, reply_markup=reply_markup)
+    keyboard = []
+    for ch in CHANNELS:
+        keyboard.append([InlineKeyboardButton(ch["name"], url=ch["url"])])
+    keyboard.append([InlineKeyboardButton("✅ VERIFY", callback_data="verify")])
+    
+    text = (
+        f"WELCOME {update.effective_user.first_name}\n\n"
+        "JOIN ALL CHANNELS TO UNLOCK\n"
+        "Sabhi 5 channels join karo fir VERIFY dabao 👇"
+    )
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-# --- UPTIMEROBOT KE LIYE (ISSE GREEN UP HOGA) ---
-app = Flask('')
-@app.route('/')
-def home(): return "Bot is Live!"
-def run(): app.run(host='0.0.0.0', port=8080)
-def keep_alive(): Thread(target=run).start()
+async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    not_joined = []
+    
+    # Check karo sab join hue ya nahi
+    for idx, chat_id in enumerate(CHANNEL_IDS):
+        try:
+            member = await context.bot.get_chat_member(chat_id, user_id)
+            if member.status in ['left', 'kicked']:
+                not_joined.append(CHANNELS[idx]["name"])
+        except:
+            # Agar ID galat hai to bhi join mana lenge taaki bot ruke nahi
+            pass
+
+    if not_joined:
+        await query.message.reply_text(f"❌ Abhi bhi join nahi kiya: {', '.join(not_joined)}\nPehle join karo fir VERIFY dabao.")
+    else:
+        await query.message.reply_text(
+            "✅ VERIFIED! Ab aapka access unlock ho gaya.\n",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("JOIN VERIFY CHANNEL", url=VERIFY_CHANNEL["url"])]])
+        )
+
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(verify, pattern="verify"))
+    print("Bot is running...")
+    app.run_polling()
 
 if __name__ == "__main__":
-    keep_alive()
-    bot_app = ApplicationBuilder().token(BOT_TOKEN).build()
-    bot_app.add_handler(CommandHandler("start", start))
-    print("Bot Running - 5 Channels Safe")
-    bot_app.run_polling()
+    main()
