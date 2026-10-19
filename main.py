@@ -1,48 +1,45 @@
 import os
 import threading
 from flask import Flask
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CommandHandler
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+WELCOME_PHOTO = "https://i.ibb.co/rF2Y3Rs3/image-20261019-114127.webp"
 
-CHANNEL_1 = "https://t.me/+xrqm18hD1uVlYzZk"
-CHANNEL_2 = "https://t.me/+j88DIVGmn2E5NzU1"
-CHANNEL_3 = "https://t.me/+rtBe_3wyso85NzRl"
-CHANNEL_4 = "https://t.me/+_M8cMRaOYrlmZWE9"
-CHANNEL_5 = "https://t.me/+c8FeRA7XQNQ4ZTJl"
-VERIFY_CHANNEL = "https://t.me/+LqVblnrPGUgyMDZl"
+CHANNELS = [
+    {"name": "CHANNEL 1", "url": "https://t.me/+xrqm18hD1uVlYzZk"},
+    {"name": "CHANNEL 2", "url": "https://t.me/+j88DIVGmn2E5NzU1"},
+    {"name": "CHANNEL 3", "url": "https://t.me/+rtBe_3wyso85NzRl"},
+    {"name": "CHANNEL 4", "url": "https://t.me/+_M8cMRaOYrlmZWE9"},
+    {"name": "CHANNEL 5", "url": "https://t.me/+Om4m__Xns9BiMzI1"},
+]
+VERIFY_URL = "https://t.me/+LqVblnrPGUgyMDZl"
 
-WELCOME_PHOTO = "https://i.ibb.co/rfZYbRS3/abc.jpg"
+flask_app = Flask(__name__)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user.first_name
-    keyboard = [
-        [InlineKeyboardButton("CHANNEL 1", url=CHANNEL_1), InlineKeyboardButton("CHANNEL 2", url=CHANNEL_2)],
-        [InlineKeyboardButton("CHANNEL 3", url=CHANNEL_3), InlineKeyboardButton("CHANNEL 4", url=CHANNEL_4)],
-        [InlineKeyboardButton("CHANNEL 5", url=CHANNEL_5)],
-        [InlineKeyboardButton("VERIFY ✅", url=VERIFY_CHANNEL)]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    caption = f"🔥 WELCOME {user}\n🚫 JOIN ALL CHANNELS TO UNLOCK"
-    try:
-        await update.message.reply_photo(photo=WELCOME_PHOTO, caption=caption, reply_markup=reply_markup)
-    except:
-        await update.message.reply_text(caption, reply_markup=reply_markup)
-
-# Flask app for Render port binding
-app_flask = Flask(__name__)
-@app_flask.route('/')
+@flask_app.route('/')
 def home():
     return "Bot is Running!"
 
+async def start(update: Update, context):
+    keyboard = [
+        [InlineKeyboardButton("CHANNEL 1", url=CHANNELS[0]["url"]), InlineKeyboardButton("CHANNEL 2", url=CHANNELS[1]["url"])],
+        [InlineKeyboardButton("CHANNEL 3", url=CHANNELS[2]["url"]), InlineKeyboardButton("CHANNEL 4", url=CHANNELS[3]["url"])],
+        [InlineKeyboardButton("CHANNEL 5", url=CHANNELS[4]["url"])],
+        [InlineKeyboardButton("VERIFY ✅", url=VERIFY_URL)]
+    ]
+    caption = f"🔥 WELCOME {update.effective_user.first_name}\n🚫 JOIN ALL CHANNELS TO UNLOCK\n\n🔗 How To Get Key 📈\n🔑 Get Key 🔥"
+    
+    await update.message.reply_photo(photo=WELCOME_PHOTO, caption=caption, reply_markup=InlineKeyboardMarkup(keyboard))
+
 def run_bot():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    print("Bot Running - 5+1")
+    print("Bot Started")
     app.run_polling()
 
 if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
     port = int(os.environ.get("PORT", 10000))
-    app_flask.run(host='0.0.0.0', port=port)
+    flask_app.run(host='0.0.0.0', port=port)
